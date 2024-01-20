@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bidder Page</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="container mt-5">
+
+<div id="enter-name">
+    <div class="form-group">
+        <input type="text" id="bidder-name" class="form-control" placeholder="Enter your name">
+    </div>
+    <button id="submit-name" class="btn btn-primary">Submit Name</button>
+</div>
+
+<div id="waiting-for-auction" style="display: none;">
+    <h3 class="text-center" style="font-size: 30px;">Waiting for the next auction to begin...</h3>
+</div>
+
+<div id="bidder-interface" style="display: none;">
+    <h3>Bidding on: <span id="auction-item-name"></span></h3>
+    <div id="bid-timer" class="alert alert-info"></div>
+    <h4>Current Highest Bid: <span id="current-highest-bid">0</span></h4>
+    
+    <div class="form-group">
+        <input type="number" id="bid-amount" class="form-control" placeholder="Your Bid Amount" min="1">
+    </div>
+    <button id="submit-bid" class="btn btn-success">Submit Bid</button>
+    <div id="bid-feedback"></div>
+</div>
+
+<script>
+const socket = io.connect('http://localhost:3000');
+
+$("#submit-name").on('click', function() {
+    const bidderName = $("#bidder-name").val();
+    if (bidderName) {
+        $("#enter-name").hide();
+        $("#waiting-for-auction").show();
+    } else {
+        alert("Please enter your name to participate in the bidding.");
+    }
+});
+
+socket.on('auctionStarted', (data) => {
+    $("#waiting-for-auction").hide();
+    startBidding(data.itemName, data.initialPrice, data.timeLimit);
+});
+
+socket.on('bidUpdate', (data) => {
+    $("#current-highest-bid").text(data.highestBid);
+    $("#bid-feedback").text("Highest bid is now " + data.highestBid + " by " + data.highestBidder).css("color", "blue");
+});
+
+socket.on('auctionEnded', (data) => {
+    $("#submit-bid").prop("disabled", true);
+    $("#bid-feedback").text("Auction has ended! Highest bidder: " + data.highestBidder + " with bid: " + data.highestBid).css("color", "green");
+    $("#waiting-for-auction").show();
+    $("#bidder-interface").hide();
+});
+
+$("#submit-bid").on('click', function() {
+    const bidAmount = parseInt($("#bid-amount").val());
+    const currentHighestBid = parseInt($("#current-highest-bid").text());
+    if (bidAmount > currentHighestBid) {
+        socket.emit('newBid', {
+            bidPrice: bidAmount,
+            bidderName: $("#bidder-name").val()
+        });
+    } else {
+        $("#bid-feedback").text("Bid too low").css("color", "red");
+    }
+});
+
+function startBidding(itemName, startingPrice, timeLimit) {
+    $("#auction-item-name").text(itemName);
+    $("#current-highest-bid").text(startingPrice);
+    $("#bidder-interface").show();
+    startTimer(timeLimit);
+}
+
+function startTimer(seconds) {
+    $("#bid-timer").text(seconds + " seconds remaining");
+    const timerInterval = setInterval(() => {
+        seconds--;
+        $("#bid-timer").text(seconds + " seconds remaining");
+        if (seconds <= 0) {
+            clearInterval(timerInterval);
+            $("#bid-timer").addClass('alert-danger').removeClass('alert-info').text("Bidding ended");
+            $("#submit-bid").prop("disabled", true);
+        }
+    }, 1000);
+}
+</script>
+
+</body>
+</html>

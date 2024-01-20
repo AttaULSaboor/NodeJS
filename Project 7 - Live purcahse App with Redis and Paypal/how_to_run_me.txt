@@ -1,0 +1,17 @@
+To run execute on the command line:
+
+npm install
+
+node datagen.js
+
+node server.js
+
+This will start the server. Typically, the server will run on a port like 3000
+
+
+Accessing the Application:
+Open a web browser and go to http://localhost:3000 
+
+
+Develop a server application to manage a dynamic shopping cart with live updates, 
+utilizing Redis for data storage and communication, and PayPal for transaction processing.

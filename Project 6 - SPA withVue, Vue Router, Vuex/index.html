@@ -1,0 +1,320 @@
+<html>
+<head>
+  <title>Social Media Disaster Monitoring Application</title>
+  <script src="https://unpkg.com/vue@3"></script>
+  <script src="https://unpkg.com/vuex@4"></script>
+  <script src="https://unpkg.com/vue-router@4"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <style>
+    /* Navigation bar */
+    .container {
+      padding-top: 30px;
+      padding-bottom: 30px;
+    }
+    nav {
+      background-color: #007bff; /* Primary color */
+      padding: 10px 10px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    nav a {
+      text-decoration: none;
+      margin-right: 15px;
+      color: white;
+      font-weight: bold;
+    }
+    /* Active link */
+    .router-link-active {
+      color: #ffc107; /* Highlight color */
+      text-decoration: underline;
+    }
+    /* Table Styles */
+    .table {
+      box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    tfoot th {
+      background-color: #404346;
+    }
+    /* Social Media Posts */
+    .post {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.1);
+      background-color: white;
+    }
+    .post img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    }
+    .tag {
+      background-color: #007bff;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin-right: 5px;
+      margin-top: 5px;
+      font-size: 0.85em;
+    }
+    /* Checkbox Groups */
+    .checkbox-group {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    /* Individual Checkbox Wrapper */
+    .checkbox-filter {
+      display: flex;
+    }
+    /* Label Style */
+    .checkbox-filter label {
+      margin-right: 10px;
+      text-transform: capitalize; /* Capitalize first letter */
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+  </div>
+  <script>
+    // Vue components for different pages
+    const HomeComponent = {
+      template: `<div class="container mt-4"><h2>Welcome to the Social Media Disaster Monitoring Dashboard.</h2></div>`
+    };
+
+    const LiveFeedComponent = {
+      template: `
+        <div class="container mt-4">
+          <h2>Live Feed</h2>
+          <div class="checkbox-group">
+            <!-- Problem Type Checkboxes -->
+            <div class="checkbox-filter">
+              <label v-for="key in ['fire', 'flood', 'power', 'medical']" :key="key">
+                <input type="checkbox" v-model="filters[key]">{{ key }}
+              </label>
+            </div>
+
+            <!-- Priority Level Checkboxes -->
+            <div class="checkbox-filter">
+              <label v-for="key in ['low', 'medium', 'high', 'critical']" :key="key">
+                <input type="checkbox" v-model="filters[key]">{{ key }}
+              </label>
+            </div>
+          </div>
+
+          <!-- Social Media Posts -->
+          <div v-for="post in filteredPosts" :key="post.id" class="post">
+            <img :src="post.image" alt="Post Image" @error="handleImageError">
+            <h3>{{ post.name }}</h3>
+            <p>{{ formatContent(post.content) }}</p>
+            <span class="tag">{{ post.problem }}</span>
+            <span class="tag">{{ post.priority }}</span>
+          </div>
+        </div>
+      `,
+      data() {
+        return {
+          filters: {
+            fire: true,
+            flood: true,
+            power: true,
+            medical: true,
+            low: true,
+            medium: true,
+            high: true,
+            critical: true
+          }
+        };
+      },
+      computed: {
+        // Filter posts based on the selected filters
+        filteredPosts() {
+          return this.$store.state.recentPosts.filter(post => {
+            return this.filters[post.problem.toLowerCase()] && this.filters[post.priority.toLowerCase()];
+          });
+        }
+      },
+      created() {
+        // Clear previous posts on creation to simulate 'since last page load'
+        this.$store.commit('clearPosts');
+      },
+      methods: {
+        handleImageError(event) {
+          event.target.src = 'path/to/default/image.jpg'; // Default image path
+        },
+        formatContent(content) {
+          // Example method to format or truncate post content
+          return content.length > 100 ? content.substring(0, 100) + '...' : content;
+        }
+      },
+      beforeRouteEnter(to, from, next) {
+        next(vm => {
+          vm.$store.commit('clearPosts');
+        });
+      },
+      mounted() {
+       
+      }
+    };
+
+    const AnalyticsComponent = {
+      template: `
+        <div class="container mt-4">
+          <h2>Analytics Dashboard</h2>
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Priority / Problem</th>
+                <th>Fire</th>
+                <th>Flood</th>
+                <th>Power</th>
+                <th>Medical</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(total, priority) in problemTotals" :key="priority">
+                <td>{{ priority }}</td>
+                <td>{{ total.Fire }}</td>
+                <td>{{ total.Flood }}</td>
+                <td>{{ total.Power }}</td>
+                <td>{{ total.Medical }}</td>
+                <td>{{ totalSum(total) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Total</th>
+                <th>{{ totalByType('Fire') }}</th>
+                <th>{{ totalByType('Flood') }}</th>
+                <th>{{ totalByType('Power') }}</th>
+                <th>{{ totalByType('Medical') }}</th>
+                <th>{{ grandTotal }}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `,
+      computed: {
+        problemTotals() {
+          const totals = {
+            Low: { Fire: 0, Flood: 0, Power: 0, Medical: 0 },
+            Medium: { Fire: 0, Flood: 0, Power: 0, Medical: 0 },
+            High: { Fire: 0, Flood: 0, Power: 0, Medical: 0 },
+            Critical: { Fire: 0, Flood: 0, Power: 0, Medical: 0 },
+          };
+          
+          if (this.$store.state.recentPosts) {
+            this.$store.state.recentPosts.forEach(post => {
+              if (totals[post.priority]) {
+                totals[post.priority][post.problem] += 1;
+              }
+            });
+          }
+          return totals;
+        },
+        totalByType() {
+          return type => {
+            return this.$store.state.recentPosts ? this.$store.state.recentPosts.filter(post => post.problem === type).length : 0;
+          };
+        },
+        grandTotal() {
+          return this.$store.state.recentPosts ? this.$store.state.recentPosts.length : 0;
+        }
+      },
+      methods: {
+        totalSum(total) {
+          return Object.values(total).reduce((sum, value) => sum + value, 0);
+        }
+      },
+      mounted() {
+      
+      },
+      beforeRouteEnter(to, from, next) {
+        next(vm => {
+        });
+      },
+    };
+
+    // Vuex Store
+    const store = Vuex.createStore({
+      state() {
+        return {
+          // Posts since last page load
+          recentPosts: []
+        };
+      },
+      mutations: {
+      addPost(state, post) {
+        // Add a new post to the recentPosts array
+        state.recentPosts.push(post);
+      },
+      clearPosts(state) {
+          // Clear posts when the page is reloaded
+          state.recentPosts = [];
+        }
+      },
+      actions: {
+        
+      },
+      getters: {
+        
+      }
+    });
+
+    // Vue Router
+    const router = VueRouter.createRouter({
+      history: VueRouter.createWebHashHistory(),
+      routes: [
+        { path: '/', component: HomeComponent },
+        { path: '/live-feed', component: LiveFeedComponent },
+        { path: '/analytics', component: AnalyticsComponent }
+      ],
+    });
+
+    // Navigation Guard
+    router.beforeEach((to, from, next) => {
+      // Clear posts only when navigating to the live-feed or analytics
+      if (to.path === '/live-feed' || to.path === '/analytics') {
+        store.commit('clearPosts');
+      }
+      next();
+    });
+
+    // Vue application
+    const App = {
+      template: `
+        <div>
+          <nav>
+            <router-link to="/" exact>Home</router-link>
+            <router-link to="/live-feed">Live Feed</router-link>
+            <router-link to="/analytics">Analytics</router-link>
+          </nav>
+          <router-view></router-view>
+        </div>
+      `
+    };
+
+    const app = Vue.createApp(App);
+    // Use Vuex and Vue Router
+    app.use(store);
+    app.use(router);
+
+    // Mount Vue application
+    app.mount('#app');
+
+    // WebSocket logic
+    const socket = io();
+    socket.on('post', (data) => {
+      store.commit('addPost', data);
+    });
+  </script>
+</body>
+</html>

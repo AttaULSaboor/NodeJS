@@ -1,0 +1,54 @@
+<!--"StAuth10222: I Atta UL Saboor, 000395780 certify that this material is my original work. 
+No other person's work has been used without due acknowledgement. I have not made my work available to anyone else." -->
+
+{{>header}}
+
+{{>navigation}}
+
+<div class="row">
+  <div class="leftcolumn">
+    <div class="card">
+      <h2>Editors</h2>
+      <p>Only editors should be able to view this page!</p>
+      
+      <h3>Users</h3>
+      <table>
+        <tr>
+          <th>Username</th>
+          <th>Password</th>
+          <th>Level</th>
+          <th>Delete</th>
+        </tr>
+        {{#users}}
+        <tr>
+          <td>{{username}}</td>
+          <td>{{password}}</td>
+          <td>{{level}}</td>
+          <td><a href="/editors/deleteuser/{{username}}">D</a></td>
+        </tr>
+        {{/users}}
+      </table>
+
+      <h3>Articles</h3>
+      <table>
+        <tr>
+          <th>Title</th>
+          <th>Author</th>
+          <th>Delete</th>
+        </tr>
+        {{#articles}}
+        <tr>
+          <td>{{title}}</td>
+          <td>{{username}}</td>
+          <td><a href="/editors/deletearticle/{{title}}">D</a></td>
+        </tr>
+        {{/articles}}
+      </table>
+    </div>
+  </div>
+
+  {{>sidebar}}
+
+</div>
+
+{{>footer}}

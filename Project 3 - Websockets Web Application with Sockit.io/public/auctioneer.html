@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auctioneer Page</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="container mt-5">
+
+<div id="auction-form">
+    <div class="form-group">
+        <input type="text" id="item-name" class="form-control" placeholder="Item Name">
+    </div>
+    <div class="form-group">
+        <input type="number" id="starting-price" class="form-control" placeholder="Starting Price" min="1">
+    </div>
+    <div class="form-group">
+        <label>Time Limit: <span id="time-display">10</span> seconds</label>
+        <input type="range" id="time-limit" class="form-control-range" min="10" max="80" step="10" value="10">
+    </div>
+    <button id="start-auction" class="btn btn-primary">Start Auction</button>
+</div>
+
+<div id="auction-live" style="display: none;">
+    <h3>Live Auction for <span id="live-item-name"></span></h3>
+    <div id="timer" class="alert alert-info"></div>
+    <h4>Highest Bid: <span id="highest-bid">0</span> by <span id="highest-bidder">auctioneer</span></h4>
+    <p>Total Bids: <span id="total-bids">0</span></p>
+
+    <!-- Table for bidder stats -->
+    <h5>Bidders Stats</h5>
+    <table class="table table-bordered" id="bidders-table">
+        <thead>
+            <tr>
+                <th>Bidder Name</th>
+                <th>Highest Bid</th>
+                <th>Number of Bids</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        </tbody>
+    </table>
+
+    <!-- Table for bid history -->
+    <h5>Bid History</h5>
+    <table class="table table-bordered" id="bid-history">
+        <thead>
+            <tr>
+                <th>Bidder Name</th>
+                <th>Bid Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        </tbody>
+    </table>
+
+    <!-- New auction button -->
+    <button id="new-auction" class="btn btn-secondary mt-3" style="display: none;">Start New Auction</button>
+</div>
+
+<script>
+    const socket = io.connect('http://localhost:3000');
+    const biddersData = {};
+
+    let isAuctionActive = false;
+
+    $("#start-auction").on('click', function() {
+        if(isAuctionActive) {
+            alert("An auction is already ongoing!");
+            return;
+        }
+
+        const itemName = $("#item-name").val();
+        const startingPrice = $("#starting-price").val();
+        const timeLimit = $("#time-limit").val();
+
+        if(itemName && startingPrice) {
+            isAuctionActive = true;
+
+            // Emit to the server to start the auction
+            socket.emit('startAuction', {
+                initialPrice: parseInt(startingPrice),
+                itemName: itemName,
+                timeLimit: parseInt(timeLimit)
+            });
+
+            // Display live auction
+            $("#auction-form").hide();
+            $("#live-item-name").text(itemName);
+            $("#highest-bid").text(startingPrice);
+            $("#auction-live").show();
+            
+            // Implement timer countdown logic
+            let seconds = timeLimit;
+            $("#timer").text(seconds + " seconds remaining");
+            const timerInterval = setInterval(() => {
+                seconds--;
+                $("#timer").text(seconds + " seconds remaining");
+                if(seconds <= 0) {
+                    isAuctionActive = false;  
+                    clearInterval(timerInterval);
+                    $("#timer").addClass('alert-danger').removeClass('alert-info').text("Auction ended");
+                    $("#new-auction").show(); // Show the 'Start New Auction' button
+                }
+            }, 1000);
+        }
+    });
+
+    socket.on('bidUpdate', function(data) {
+        $("#highest-bid").text(data.highestBid);
+        $("#highest-bidder").text(data.highestBidder);
+        $("#total-bids").text(data.totalBids);
+
+        // Update bidders stats table
+        let biddersTableContent = '';
+        data.bidders.forEach(bidder => {
+            biddersTableContent += `
+                <tr>
+                    <td>${bidder.name}</td>
+                    <td>${bidder.highestBid}</td>
+                    <td>${bidder.bidCount}</td>
+                </tr>
+            `;
+        });
+        $("#bidders-table tbody").html(biddersTableContent);
+
+        // Update bid history table
+        let bidHistoryContent = '';
+        data.bidHistory.forEach(bid => {
+            bidHistoryContent += `
+                <tr>
+                    <td>${bid.name}</td>
+                    <td>${bid.amount}</td>
+                </tr>
+            `;
+        });
+        $("#bid-history tbody").html(bidHistoryContent);
+    });
+
+    socket.on('auctionEnded', function() {
+        isAuctionActive = false;
+        $("#new-auction").show();
+    });
+
+    $("#new-auction").on('click', function() {
+        $(this).hide();
+        $("#auction-live").hide();
+        $("#auction-form").show();
+        // Reset bid tables and other dynamic content
+        $("#bidders-table tbody").empty();
+        $("#bid-history tbody").empty();
+        $("#highest-bid").text('0');
+        $("#highest-bidder").text('auctioneer');
+        $("#total-bids").text('0');
+
+        isAuctionActive = false;
+    });
+
+    $("#time-limit").on('input', function() {
+        $('#time-display').text($(this).val());
+    });
+</script>
+
+</body>
+</html>

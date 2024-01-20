@@ -1,0 +1,18 @@
+{
+  "name": "restful-api",
+  "version": "1.0.0",
+  "description": "This is a REST API with NodeJS. Use an SQLite database to read, create, modify and Delete entries, and Create HTTP requests in NodeJS to test a REST API.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Atta UL Saboor",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.5.1",
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2",
+    "sqlite": "^5.0.1",
+    "sqlite3": "^5.1.6"
+  }
+}

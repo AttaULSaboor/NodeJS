@@ -1,0 +1,271 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VueJS Application - ClassGrade Hub</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+
+</head>
+<style>
+    .fade-enter-active, .fade-leave-active {
+        transition: opacity 1s ease-out;
+    }
+    .fade-enter, .fade-leave-to {
+        opacity: 0;
+    }
+    .sort-icon:hover {
+    color: #0d6efd; /* Bootstrap primary color */
+    cursor: pointer;
+}
+</style>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">ClassGrade Hub</a>
+        </div>
+    </nav>
+    <div id="app" class="container mt-5">
+        <div class="row mb-3">
+            <div class="col-lg-4">
+                <!-- Modal Trigger Button -->
+                <button type="button" class="btn btn-primary" @click="prepareAddGrade" data-toggle="modal" data-target="#gradeModal">
+                    Add Grade
+                </button>
+            </div>
+            <div class="col-lg-8">
+                <!-- Filter and Sort Controls -->
+                <div class="input-group">
+                    <input v-model="courseFilter" type="text" class="form-control" placeholder="Filter by course" aria-label="Course filter">
+                    <div class="input-group-append">
+                        <button :class="['btn', isHonorActive ? 'btn-success' : 'btn-outline-secondary']" 
+                                type="button" 
+                                v-on:click="toggleHonorGrades">
+                            Honor Grades
+                        </button>
+                        <button :class="['btn', isFailActive ? 'btn-success' : 'btn-outline-secondary']" 
+                                type="button" 
+                                v-on:click="toggleFailGrades">
+                            Fail Grades
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- List of grades -->
+        <div class="table-responsive">
+            <table class="table">
+                <thead class="thead-light">
+                    <tr>
+                        <th scope="col">
+                            Course Name
+                            <i class="sort-icon fas" :class="{ 'fa-sort-up': sortOrder.course, 'fa-sort-down': !sortOrder.course }" @click="sortBy('course')"></i>
+                        </th>
+                        <th scope="col">
+                            Grade
+                            <i class="sort-icon fas" :class="{ 'fa-sort-up': sortOrder.score, 'fa-sort-down': !sortOrder.score }" @click="sortBy('score')"></i>
+                        </th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <transition-group name="fade" tag="tbody">
+                        <tr v-for="(grade, index) in filteredGrades" :key="grade.id">
+                            <td>{{ grade.course }}</td>
+                            <td>{{ grade.score }}</td>
+                            <td>
+                                <!-- This button is for editing the existing grade -->
+                                <button class="btn btn-primary btn-sm" @click="prepareEditGrade(grade, index)" data-toggle="modal" data-target="#gradeModal">Edit</button>
+                                <button class="btn btn-danger btn-sm" @click="deleteGrade(index)">Delete</button>
+                            </td>
+                        </tr>
+                    </transition-group>
+                </tbody>
+            </table>
+        </div>
+        <!-- Modal -->
+        <div class="modal fade" id="gradeModal" tabindex="-1" role="dialog" aria-labelledby="gradeModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="gradeModalLabel">{{ editGradeIndex === -1 ? 'Add' : 'Edit' }} Grade</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <!-- Modal Body -->
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="courseName">Course Name</label>
+                            <input v-model="newGrade.course" type="text" class="form-control" id="courseName" placeholder="Course Name">
+                        </div>
+                        <div class="form-group">
+                            <label for="gradeScore">Grade</label>
+                            <input v-model.number="newGrade.score" type="number" class="form-control" id="gradeScore" placeholder="Grade (0-100)">
+                        </div>
+                    </div>
+                    <!-- Modal Footer -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" @click="editGradeIndex === -1 ? addGrade() : updateGrade()">
+                            {{ editGradeIndex === -1 ? 'Add Grade' : 'Save Changes' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Display Min, Max, and Average -->
+        <div class="alert alert-info mt-3">
+            <strong>Statistics:</strong>
+            <span>Min: {{ minGrade }}</span> |
+            <span>Max: {{ maxGrade }}</span> |
+            <span>Average: {{ averageGrade.toFixed(2) }}</span>
+        </div>
+    </div>
+
+    <!-- VueJS -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+
+    <!-- Optional: Bootstrap JS and its dependencies (if need Bootstrap's JavaScript components) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                grades: [], // to store grades
+                newGrade: { course: '', score: 0 }, // for new grade entries
+                editGradeIndex: -1, // to track which grade is being edited
+                courseFilter: '', // for filtering by course name
+                showHonorGrades: false, // filter for honor grades
+                showFailGrades: false, // filter for fail grades
+                sortOrder: {
+                course: true,
+                score: true},
+                isHonorActive: false,
+                isFailActive: false
+            },
+            methods: {
+                prepareAddGrade() {
+                    // This method only sets up the modal for adding a new grade
+                    this.editGradeIndex = -1;
+                    this.newGrade = { course: '', score: 0 }; // Resets the form to be empty
+                },
+                addGrade() {
+                    // This method is called when the modal form is submitted for adding a grade
+                    if (this.newGrade.score >= 0 && this.newGrade.score <= 100) {
+                        if (!this.grades.some(grade => grade.course.toLowerCase() === this.newGrade.course.toLowerCase())) {
+                            this.grades.push({...this.newGrade});
+                            $('#gradeModal').modal('hide'); // Hide the modal after adding
+                            this.newGrade = { course: '', score: 0 }; // Reset the form for the next addition
+                        } else {
+                            alert('Course already exists.');
+                        }
+                    } else {
+                        alert('Score must be between 0 and 100.');
+                    }
+                },
+                prepareEditGrade(grade, index) {
+                    this.editGradeIndex = index; // Sets the index for the grade being edited
+                    this.newGrade = Object.assign({}, grade); // Copies the grade data to the form
+                },
+                editGrade(index) {
+                    this.editGradeIndex = index;
+                    this.newGrade = {...this.grades[index]};
+                },
+                updateGrade() {
+                    // Validate the newGrade data
+                    if (this.newGrade.score >= 0 && this.newGrade.score <= 100) {
+                        // Update the grade at editGradeIndex with newGrade data
+                        Vue.set(this.grades, this.editGradeIndex, {...this.newGrade});
+                        // Reset for next use and close the modal
+                        this.newGrade = { course: '', score: 0 };
+                        this.editGradeIndex = -1;
+                        $('#gradeModal').modal('hide'); // If not using data-dismiss="modal"
+                    } else {
+                        alert('Score must be between 0 and 100.');
+                    }
+                },
+                deleteGrade(index) {
+                    // This allows the CSS transition to complete
+                    Vue.nextTick(() => {
+                        setTimeout(() => {
+                            this.grades.splice(index, 1);
+                        }, 1000); 
+                    });
+                },
+                sortBy(sortKey) {
+                    this.grades.sort((a, b) => {
+                        if (this.sortOrder[sortKey]) {
+                            return a[sortKey] > b[sortKey] ? 1 : -1;
+                        } else {
+                            return b[sortKey] > a[sortKey] ? 1 : -1;
+                        }
+                    });
+                    this.sortOrder[sortKey] = !this.sortOrder[sortKey]; // Toggle the sort order for the next click
+                },
+                toggleHonorGrades() {
+                    this.isHonorActive = !this.isHonorActive;
+                    // Fail grades are not active when honor grades are active
+                    if (this.isHonorActive) {
+                        this.isFailActive = false;
+                    }
+                    this.showHonorGrades = !this.showHonorGrades;
+                    this.showFailGrades = false; // Reset fail grades filter
+                },
+                toggleFailGrades() {
+                    this.isFailActive = !this.isFailActive;
+                    // Honor grades are not active when fail grades are active
+                    if (this.isFailActive) {
+                        this.isHonorActive = false;
+                    }
+                    this.showFailGrades = !this.showFailGrades;
+                    this.showHonorGrades = false; // Reset honor grades filter
+                },
+            },
+            computed: {
+                filteredGrades() {
+                    let result = this.grades;
+
+                    // Apply course filter
+                    if (this.courseFilter) {
+                        result = result.filter(grade => grade.course.toLowerCase().includes(this.courseFilter.toLowerCase()));
+                    }
+
+                    // Apply honor grades filter
+                    if (this.showHonorGrades) {
+                        result = result.filter(grade => grade.score >= 80);
+                    }
+
+                    // Apply fail grades filter
+                    if (this.showFailGrades) {
+                        result = result.filter(grade => grade.score < 50);
+                    }
+                    if (this.isHonorActive) {
+                        result = result.filter(grade => grade.score >= 80);
+                    } else if (this.isFailActive) {
+                        result = result.filter(grade => grade.score < 50);
+                    }
+
+                    return result;
+                },
+                minGrade() {
+                    if (this.grades.length === 0) return 'N/A'; // Return 'N/A' or some indication if there are no grades
+                    return Math.min(...this.grades.map(grade => grade.score));
+                },
+                maxGrade() {
+                    return Math.max(...this.grades.map(grade => grade.score), 0);
+                },
+                averageGrade() {
+                    if (this.grades.length === 0) return 0;
+                    return this.grades.reduce((acc, grade) => acc + grade.score, 0) / this.grades.length;
+                }
+            },
+        });
+    </script>
+</body>
+</html>

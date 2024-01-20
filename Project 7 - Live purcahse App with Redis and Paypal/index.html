@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Food Item Shopping</title>
+    <!-- Bootstrap CSS for styling -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Socket.io for real-time communication -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- PayPal SDK for handling payments -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AUEZvmaTayxN7uvq9r7Qp6fhVHuCFxWj7luLe4MIQJ4T4Luqd2o8SYFKC8FVMjXqH_dFPocAwl1BSEp_"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Page title -->
+        <div class="row">
+            <div class="col-12 text-center">
+                <h1>Welcome to Food Item Shopping</h1>
+            </div>
+        </div>
+        <!-- Content rows for items and cart -->
+        <div class="row">
+            <!-- Available items list -->
+            <div class="col-md-8">
+                <h2>Available Food Items</h2>
+                <table id="foodItems" class="table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Calories</th>
+                            <th>Grams</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Food items added dynamically here -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Shopping cart summary -->
+            <div class="col-md-4">
+                <h2>Shopping Cart</h2>
+                <div id="shoppingCart">
+                    <!-- Cart items will be listed here -->
+                </div>
+                <h3>Total Cost: <span id="totalCost">$0.00</span></h3>
+                <button id="checkoutButton" class="btn btn-primary">Checkout</button>
+                <!-- Container for PayPal buttons -->
+                <div id="paypal-button-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for dynamic content and PayPal integration -->
+    <script>
+        const socket = io();
+        let cartItemIds = []; // Store item IDs added to the cart
+        let totalCost = 0; // Store the total cost of items in the cart
+
+        // Handler for new data via websocket
+        socket.on('newData', (data) => {
+            const tableBody = document.getElementById('foodItems').getElementsByTagName('tbody')[0];
+            const newRow = tableBody.insertRow();
+            newRow.innerHTML = `
+                <tr>
+                    <td>${data.type}</td>
+                    <td>${data.category}</td>
+                    <td>${data.price}</td>
+                    <td>${data.calories}</td>
+                    <td>${data.grams}</td>
+                    <td><button onclick="addToCart('${data.id}', '${data.type}', ${data.price})" class="btn btn-sm btn-success">Add to Cart</button></td>
+                </tr>
+            `;
+        });
+
+        // Add item to the shopping cart
+        function addToCart(id, type, price) {
+            cartItemIds.push(id);
+            const cart = document.getElementById('shoppingCart');
+            const cartItem = document.createElement('div');
+            cartItem.textContent = `${type} - $${price}`;
+            cart.appendChild(cartItem);
+            updateTotalCost(price);
+        }
+
+        // Update total cost in the shopping cart
+        function updateTotalCost(itemPrice) {
+            totalCost += parseFloat(itemPrice);
+            document.getElementById('totalCost').textContent = `$${totalCost.toFixed(2)}`;
+        }
+
+        // Ensure the DOM is fully loaded before attaching event handlers
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // Event listener for checkout button
+            document.getElementById('checkoutButton').addEventListener('click', () => {
+                console.log('Checkout button clicked');
+                console.log('Cart Item IDs:', cartItemIds);
+
+                // Create payment via server
+                fetch('/create-payment', {
+                    method: 'post',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ itemIds: cartItemIds }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Server response:', data);
+                    // Render PayPal buttons
+                    paypal.Buttons({
+                        createOrder: () => data.id,
+                        onApprove: (data, actions) => {
+                            return fetch('/execute-payment', {
+                                method: 'post',
+                                body: JSON.stringify({
+                                    orderId: data.orderID
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(orderData => {
+                                alert('Payment completed successfully!');
+                            });
+                        }
+                    }).render('#paypal-button-container');
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+    </script>
+
+    <!-- Bootstrap dependencies -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>

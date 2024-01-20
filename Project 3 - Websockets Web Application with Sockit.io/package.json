@@ -1,0 +1,15 @@
+{
+  "name": "as3_atta-ul-saboor",
+  "version": "1.0.0",
+  "description": "Create a real-time web application with Socket.io and use websockets to co-ordinate interaction between different users.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Atta UL Saboor",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}

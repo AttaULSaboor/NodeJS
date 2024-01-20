@@ -1,0 +1,39 @@
+
+Bot: CryptoBot
+Description: CryptoBot is a Discord bot that retrieves cryptocurrency data using the Coinlore API. It provides information about various cryptocurrencies upon user requests.
+
+Commands:
+1. !price <crypto_symbol>
+   - Purpose: Retrieves the current price of the specified cryptocurrency.
+   - Argument: <crypto_symbol> (e.g., BTC, ETH, LTC)
+   - Usage: !pricebtc
+   - Usage: !priceeth
+   - Usage: !priceltc
+
+2. !rank <crypto_symbol>
+   - Purpose: Retrieves the rank of the specified cryptocurrency.
+   - Argument: <crypto_symbol> (e.g., BTC, ETH, LTC)
+   - Usage: !rankbtc
+   - Usage: !ranketh
+   - Usage: !rankltc
+
+3. !change <crypto_symbol>
+   - Purpose: Retrieves the 24-hour percentage change of the specified cryptocurrency.
+   - Argument: <crypto_symbol> (e.g., BTC, ETH, LTC)
+   - Usage: !changebtc
+   - Usage: !changeeth
+   - Usage: !changeltc
+
+4. !volume24 <crypto_symbol>
+   - Purpose: Retrieves the 24-hour trading volume of the specified cryptocurrency.
+   - Argument: <crypto_symbol> (e.g., BTC, ETH, LTC)
+   - Usage: !volume24btc
+   - Usage: !volume24eth
+   - Usage: !volume24ltc
+
+5. !info <crypto_symbol>
+   - Purpose: Retrieves general information about the specified cryptocurrency.
+   - Argument: <crypto_symbol> (e.g., BTC, ETH, LTC)
+   - Usage: !infobtc
+   - Usage: !infoeth
+   - Usage: !infoltc
